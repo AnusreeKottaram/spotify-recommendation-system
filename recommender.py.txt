@@ -1,0 +1,65 @@
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+songs=pd.read_csv(r"C:\Users\anusr\Downloads\spotify_tracks.csv")
+songs=songs[['name','artists','album','explicit']]
+songs['combined_feature']=(songs['artists']+" "+songs['album']+" "+songs['explicit'].astype(str))
+
+vectorizer=CountVectorizer(stop_words='english')
+feature_vector=vectorizer.fit_transform(songs['combined_feature'])
+count_similarity=cosine_similarity(feature_vector)
+
+tf_vectorize=TfidfVectorizer(stop_words='english')
+feature_vectors=tf_vectorize.fit_transform(songs['combined_feature'])
+tf_similarity_matrix=cosine_similarity(feature_vectors)
+
+def evaluate_model(similarity_matrix, sample_size=100, k=5):
+    scores = []
+    for index in range(sample_size):
+        similarity_score = list(enumerate(similarity_matrix[index]))
+        sorted_score = sorted(similarity_score, key=lambda x: x[1], reverse=True)
+        recommendations = sorted_score[1:k+1]
+        for rec in recommendations:
+            scores.append(similarity_matrix[index][rec[0]])
+    return sum(scores)/len(scores)
+
+def recomended_songs(song_name,n_recommend,similarity_matrix):
+    song_name=song_name.lower()
+    index=songs[songs['name'].str.lower()==song_name].index
+    if len(index)==0:
+        print("No song found")
+        return
+    index=index[0]
+    similarity_score=list(enumerate(similarity_matrix[index]))
+    sorted_score=sorted(similarity_score,key=lambda x:x[1],reverse=True)
+    count=0
+    for i in sorted_score[1:]:
+        print(songs.iloc[i[0]]['name'])
+        count+=1
+        if n_recommend==count:
+            break
+def recommended_songs(song_name,n_recommended,similarity_matrix):
+    song_name=song_name.lower()
+    index=songs[songs['name'].str.lower()==song_name].index
+    if len(index)==0:
+        print("No song found")
+        return
+    index=index[0]
+    similarity_score=list(enumerate(similarity_matrix[index]))
+    sorted_score=sorted(similarity_score,key=lambda x:x[1],reverse=True)
+    count=0
+    for i in sorted_score[1:]:
+        print(songs.iloc[i[0]]['name'])
+        count+=1
+        if count==n_recommended:
+            break
+if __name__=="__main__":
+    recomended_songs("Too Good At Goodbyes - Acoustic",5,count_similarity)
+    recommended_songs("Too Good At Goodbyes - Acoustic", 5,tf_similarity_matrix)
+    count_score = evaluate_model(count_similarity)
+    tfidf_score = evaluate_model(tf_similarity_matrix)
+    print("CountVectorizer Score:", count_score)
+    print("Tfidf_score",tfidf_score)
